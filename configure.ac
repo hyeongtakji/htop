@@ -230,6 +230,7 @@ if test "$my_htop_platform" = linux; then
    if test "$enable_static" != yes; then
       AC_SEARCH_LIBS([dlopen], [dl dld], [], [AC_MSG_ERROR([can not find required function dlopen()])])
    fi
+   AC_SEARCH_LIBS([numa_available], [numa], [], [AC_MSG_ERROR([can not find required function numa_available()])])
 fi
 
 if test "$my_htop_platform" = netbsd; then
