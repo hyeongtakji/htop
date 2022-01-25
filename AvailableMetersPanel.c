@@ -12,6 +12,8 @@ in the source distribution for its full text.
 #include <stdlib.h>
 
 #include "CPUMeter.h"
+#include "MemoryMeter.h"
+#include "MemoryNodeMeter.h"
 #include "DynamicMeter.h"
 #include "FunctionBar.h"
 #include "Hashtable.h"
@@ -109,6 +111,18 @@ static void AvailableMetersPanel_addCPUMeters(Panel* super, const MeterClass* ty
    }
 }
 
+// Handle (&MemoryMeter_class) entries in the AvailableMetersPanel
+static void AvailableMetersPanel_addMemoryMeters(Panel* super, const MeterClass* type, const ProcessList* pl) {
+    Panel_add(super, (Object*) ListItem_new("Memory", 1 << 16));
+    if (pl->memNodes > 1) {
+        for (unsigned int i = 0; i < pl->memNodes; i++) {
+            char buffer[50];
+            xSnprintf(buffer, sizeof(buffer), "%s %d", type->uiName, i);
+            Panel_add(super, (Object*) ListItem_new(buffer, (2 << 16) + i));
+        }
+    }
+}
+
 typedef struct {
    Panel* super;
    unsigned int id;
@@ -156,15 +170,20 @@ AvailableMetersPanel* AvailableMetersPanel_new(Settings* settings, Header* heade
    // handle separately in the code below.  Likewise, identifiers for Dynamic
    // Meters are handled separately - similar to CPUs, this allows generation
    // of multiple different Meters (also using 'param' to distinguish them).
-   for (unsigned int i = 1; Platform_meterTypes[i]; i++) {
+   //
+   // +Platform_meterTypes[1], [2] should be always (&MemoryMeter_class) and
+   // (&MemoryNodeMeter_class) we will handle separately
+   for (unsigned int i = 3; Platform_meterTypes[i]; i++) {
       const MeterClass* type = Platform_meterTypes[i];
       assert(type != &CPUMeter_class);
+      assert(type != &MemoryMeter_class && type != &MemoryNodeMeter_class);
       if (type == &DynamicMeter_class)
          AvailableMetersPanel_addDynamicMeters(super, pl, i);
       else
          AvailableMetersPanel_addPlatformMeter(super, type, i);
    }
    AvailableMetersPanel_addCPUMeters(super, &CPUMeter_class, pl);
+   AvailableMetersPanel_addMemoryMeters(super, &MemoryMeter_class, pl);
 
    return this;
 }

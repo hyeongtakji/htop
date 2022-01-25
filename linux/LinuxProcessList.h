@@ -57,6 +57,13 @@ typedef struct CPUData_ {
    bool online;
 } CPUData;
 
+typedef struct MemNodeData_ {
+    // Maybe we can support more
+    memory_t totalMem;
+    memory_t usedMem;
+    memory_t sharedMem;
+} MemNodeData;
+
 typedef struct TtyDriver_ {
    char* path;
    unsigned int major;
@@ -82,6 +89,8 @@ typedef struct LinuxProcessList_ {
    memory_t usedHugePageMem[HTOP_HUGEPAGE_COUNT];
 
    memory_t availableMem;
+
+   MemNodeData* memNodeData;
 
    ZfsArcStats zfs;
    ZramStats zram;

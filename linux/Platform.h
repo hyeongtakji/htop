@@ -62,6 +62,7 @@ int Platform_getMaxPid(void);
 double Platform_setCPUValues(Meter* this, unsigned int cpu);
 
 void Platform_setMemoryValues(Meter* this);
+void Platform_setMemoryNodeValues(Meter* this, unsigned int node_num);
 
 void Platform_setSwapValues(Meter* this);
 

@@ -87,6 +87,8 @@ typedef struct ProcessList_ {
 
    unsigned int activeCPUs;
    unsigned int existingCPUs;
+
+   unsigned int memNodes;
 } ProcessList;
 
 /* Implemented by platforms */

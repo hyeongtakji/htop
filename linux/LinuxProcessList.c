@@ -25,6 +25,7 @@ in the source distribution for its full text.
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <numa.h>       // numa_num_configured_nodes()
 
 #ifdef HAVE_DELAYACCT
 #include <linux/netlink.h>
@@ -245,6 +246,20 @@ static void LinuxProcessList_updateCPUcount(ProcessList* super) {
    super->existingCPUs = currExisting;
 }
 
+static void LinuxProcessList_updateMemNodecount(ProcessList* super) {
+   // get memory node info(the number of nodes)
+   LinuxProcessList* this = (LinuxProcessList*) super;
+   if (numa_available() < 0) {
+      return;
+   }
+   super->memNodes = numa_num_configured_nodes();
+
+   this->memNodeData = xMallocArray(super->memNodes, sizeof(MemNodeData));
+   super->activeCPUs = 1;
+   super->existingCPUs = 1;
+   return;
+}
+
 ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* dynamicMeters, Hashtable* dynamicColumns, Hashtable* pidMatchList, uid_t userId) {
    LinuxProcessList* this = xCalloc(1, sizeof(LinuxProcessList));
    ProcessList* pl = &(this->super);
@@ -288,6 +303,8 @@ ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* dynamicMeters, H
 
    // Initialize CPU count
    LinuxProcessList_updateCPUcount(pl);
+   // Initialize Memory node count
+   LinuxProcessList_updateMemNodecount(pl);
 
    return pl;
 }
@@ -296,6 +313,7 @@ void ProcessList_delete(ProcessList* pl) {
    LinuxProcessList* this = (LinuxProcessList*) pl;
    ProcessList_done(pl);
    free(this->cpuData);
+   free(this->memNodeData);
    if (this->ttyDrivers) {
       for (int i = 0; this->ttyDrivers[i].path; i++) {
          free(this->ttyDrivers[i].path);
@@ -1723,6 +1741,59 @@ static inline void LinuxProcessList_scanMemoryInfo(ProcessList* this) {
    this->cachedSwap = swapCacheMem;
 }
 
+static inline void LinuxProcessList_scanMemoryNodeInfo(ProcessList* super) {
+   unsigned int existingNodes = super->memNodes;
+
+   for (unsigned int i = 0; i < existingNodes; i++) {
+      memory_t totalMem = 0;
+      memory_t freeMem = 0;
+      memory_t sharedMem = 0;
+      char pathBuffer[64];
+      xSnprintf(pathBuffer, sizeof(pathBuffer), "/sys/devices/system/node/node%u/meminfo", i);
+
+      FILE* file = fopen(pathBuffer, "r");
+      if (!file)
+         CRT_fatalError("Cannot open node meminfo");
+
+      char buffer[128];
+      const unsigned int LINES_NEED_TO_BE_READ = 17;
+      for (unsigned int lineRead = 0; fgets(buffer, sizeof(buffer), file) && 
+            (lineRead < LINES_NEED_TO_BE_READ); lineRead++) {
+         memory_t parsed_;
+         unsigned int nodeNum;
+         if (String_contains_i(buffer, "MemTotal")) {
+            if (sscanf(buffer, "Node %u MemTotal: %llu kB", &nodeNum, 
+                     &parsed_) == 2)
+               totalMem = parsed_;
+         }
+         else if (String_contains_i(buffer, "MemFree")) {
+            if (sscanf(buffer, "Node %u MemFree: %llu kB", &nodeNum, 
+                     &parsed_) == 2)
+               freeMem = parsed_;
+         }
+         else if (String_contains_i(buffer, "Shmem")) {
+            if (sscanf(buffer, "Node %u Shmem: %llu kB", &nodeNum, 
+                     &parsed_) == 2)
+               sharedMem = parsed_;
+         }
+         else
+            continue;
+      }
+
+      fclose(file);
+
+      /*
+       * We only have free or used memory here.
+       * free + used = total
+       */
+      LinuxProcessList* this = (LinuxProcessList*) super;
+      MemNodeData* memNodeData = &(this->memNodeData[i]);
+      memNodeData->totalMem = totalMem;
+      memNodeData->usedMem = totalMem - freeMem;
+      memNodeData->sharedMem = sharedMem;
+   }
+}
+
 static void LinuxProcessList_scanHugePages(LinuxProcessList* this) {
    this->totalHugePageMem = 0;
    for (unsigned i = 0; i < HTOP_HUGEPAGE_COUNT; i++) {
@@ -2131,6 +2202,7 @@ void ProcessList_goThroughEntries(ProcessList* super, bool pauseProcessUpdate) {
    const Settings* settings = super->settings;
 
    LinuxProcessList_scanMemoryInfo(super);
+   LinuxProcessList_scanMemoryNodeInfo(super);
    LinuxProcessList_scanHugePages(this);
    LinuxProcessList_scanZfsArcstats(this);
    LinuxProcessList_scanZramInfo(this);

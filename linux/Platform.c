@@ -36,6 +36,7 @@ in the source distribution for its full text.
 #include "MainPanel.h"
 #include "Meter.h"
 #include "MemoryMeter.h"
+#include "MemoryNodeMeter.h"
 #include "MemorySwapMeter.h"
 #include "NetworkIOMeter.h"
 #include "Object.h"
@@ -206,12 +207,13 @@ void Platform_setBindings(Htop_Action* keys) {
 
 const MeterClass* const Platform_meterTypes[] = {
    &CPUMeter_class,
+   &MemoryMeter_class,
+   &MemoryNodeMeter_class,
    &ClockMeter_class,
    &DateMeter_class,
    &DateTimeMeter_class,
    &LoadAverageMeter_class,
    &LoadMeter_class,
-   &MemoryMeter_class,
    &SwapMeter_class,
    &MemorySwapMeter_class,
    &SysArchMeter_class,
@@ -359,6 +361,15 @@ void Platform_setMemoryValues(Meter* this) {
       this->values[0] -= lpl->zfs.size;
       this->values[3] += lpl->zfs.size;
    }
+}
+
+void Platform_setMemoryNodeValues(Meter* this, unsigned int node_num) {
+   const LinuxProcessList* pl = (const LinuxProcessList*) this->pl;
+   const MemNodeData* memNodeData = &(pl->memNodeData[node_num]);
+
+   this->total     = memNodeData->totalMem;
+   this->values[0] = memNodeData->usedMem;
+   this->values[2] = memNodeData->sharedMem;
 }
 
 void Platform_setSwapValues(Meter* this) {
