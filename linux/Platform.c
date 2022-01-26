@@ -36,7 +36,6 @@ in the source distribution for its full text.
 #include "MainPanel.h"
 #include "Meter.h"
 #include "MemoryMeter.h"
-#include "MemoryNodeMeter.h"
 #include "MemorySwapMeter.h"
 #include "NetworkIOMeter.h"
 #include "Object.h"
@@ -69,6 +68,10 @@ in the source distribution for its full text.
 
 #ifdef HAVE_SENSORS_SENSORS_H
 #include "LibSensors.h"
+#endif
+
+#ifdef MEMNODE_ON
+#include "MemoryNodeMeter.h"
 #endif
 
 #ifndef O_PATH
@@ -208,7 +211,9 @@ void Platform_setBindings(Htop_Action* keys) {
 const MeterClass* const Platform_meterTypes[] = {
    &CPUMeter_class,
    &MemoryMeter_class,
+   #ifdef MEMNODE_ON
    &MemoryNodeMeter_class,
+   #endif
    &ClockMeter_class,
    &DateMeter_class,
    &DateTimeMeter_class,
@@ -363,6 +368,7 @@ void Platform_setMemoryValues(Meter* this) {
    }
 }
 
+#ifdef MEMNODE_ON
 void Platform_setMemoryNodeValues(Meter* this, unsigned int node_num) {
    const LinuxProcessList* pl = (const LinuxProcessList*) this->pl;
    const MemNodeData* memNodeData = &(pl->memNodeData[node_num]);
@@ -371,6 +377,7 @@ void Platform_setMemoryNodeValues(Meter* this, unsigned int node_num) {
    this->values[0] = memNodeData->usedMem;
    this->values[2] = memNodeData->sharedMem;
 }
+#endif
 
 void Platform_setSwapValues(Meter* this) {
    const ProcessList* pl = this->pl;

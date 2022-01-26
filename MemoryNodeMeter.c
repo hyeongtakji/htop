@@ -15,7 +15,7 @@ in the source distribution for its full text.
 #include "Platform.h"
 #include "RichString.h"
 
-
+#ifdef MEMNODE_ON
 static const int MemoryNodeMeter_attributes[] = {
    MEMORY_USED,
    MEMORY_SHARED,
@@ -119,3 +119,4 @@ const MeterClass MemoryNodeMeter_class = {
    .caption = "Nod",
    .init = MemoryNodeMeter_init
 };
+#endif

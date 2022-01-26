@@ -25,7 +25,10 @@ in the source distribution for its full text.
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef MEMNODE_ON
 #include <numa.h>       // numa_num_configured_nodes()
+#endif
 
 #ifdef HAVE_DELAYACCT
 #include <linux/netlink.h>
@@ -246,6 +249,7 @@ static void LinuxProcessList_updateCPUcount(ProcessList* super) {
    super->existingCPUs = currExisting;
 }
 
+#ifdef MEMNODE_ON
 static void LinuxProcessList_updateMemNodecount(ProcessList* super) {
    // get memory node info(the number of nodes)
    LinuxProcessList* this = (LinuxProcessList*) super;
@@ -257,6 +261,7 @@ static void LinuxProcessList_updateMemNodecount(ProcessList* super) {
    this->memNodeData = xMallocArray(super->memNodes, sizeof(MemNodeData));
    return;
 }
+#endif
 
 ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* dynamicMeters, Hashtable* dynamicColumns, Hashtable* pidMatchList, uid_t userId) {
    LinuxProcessList* this = xCalloc(1, sizeof(LinuxProcessList));
@@ -302,7 +307,9 @@ ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* dynamicMeters, H
    // Initialize CPU count
    LinuxProcessList_updateCPUcount(pl);
    // Initialize Memory node count
+   #ifdef MEMNODE_ON
    LinuxProcessList_updateMemNodecount(pl);
+   #endif
 
    return pl;
 }
@@ -311,7 +318,9 @@ void ProcessList_delete(ProcessList* pl) {
    LinuxProcessList* this = (LinuxProcessList*) pl;
    ProcessList_done(pl);
    free(this->cpuData);
+   #ifdef MEMNODE_ON
    free(this->memNodeData);
+   #endif
    if (this->ttyDrivers) {
       for (int i = 0; this->ttyDrivers[i].path; i++) {
          free(this->ttyDrivers[i].path);
@@ -1730,9 +1739,14 @@ static inline void LinuxProcessList_scanMemoryInfo(ProcessList* this) {
    this->totalMem = totalMem;
    this->cachedMem = cachedMem + sreclaimableMem - sharedMem;
    this->sharedMem = sharedMem;
-   const memory_t usedDiff = freeMem + cachedMem + sreclaimableMem + buffersMem;
-   //this->usedMem = (totalMem >= usedDiff) ? totalMem - usedDiff : totalMem - freeMem;
+
+   #ifdef MEMNODE_ON
    this->usedMem = totalMem - freeMem;
+   #else
+   const memory_t usedDiff = freeMem + cachedMem + sreclaimableMem + buffersMem;
+   this->usedMem = (totalMem >= usedDiff) ? totalMem - usedDiff : totalMem - freeMem;
+   #endif
+
    this->buffersMem = buffersMem;
    this->availableMem = availableMem != 0 ? MINIMUM(availableMem, totalMem) : freeMem;
    this->totalSwap = swapTotalMem;
@@ -1740,6 +1754,7 @@ static inline void LinuxProcessList_scanMemoryInfo(ProcessList* this) {
    this->cachedSwap = swapCacheMem;
 }
 
+#ifdef MEMNODE_ON
 static inline void LinuxProcessList_scanMemoryNodeInfo(ProcessList* super) {
    unsigned int existingNodes = super->memNodes;
 
@@ -1792,6 +1807,7 @@ static inline void LinuxProcessList_scanMemoryNodeInfo(ProcessList* super) {
       memNodeData->sharedMem = sharedMem;
    }
 }
+#endif
 
 static void LinuxProcessList_scanHugePages(LinuxProcessList* this) {
    this->totalHugePageMem = 0;
@@ -2201,7 +2217,9 @@ void ProcessList_goThroughEntries(ProcessList* super, bool pauseProcessUpdate) {
    const Settings* settings = super->settings;
 
    LinuxProcessList_scanMemoryInfo(super);
+   #ifdef MEMNODE_ON
    LinuxProcessList_scanMemoryNodeInfo(super);
+   #endif
    LinuxProcessList_scanHugePages(this);
    LinuxProcessList_scanZfsArcstats(this);
    LinuxProcessList_scanZramInfo(this);

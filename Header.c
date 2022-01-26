@@ -17,7 +17,6 @@ in the source distribution for its full text.
 
 #include "CRT.h"
 #include "CPUMeter.h"
-#include "MemoryNodeMeter.h"
 #include "DynamicMeter.h"
 #include "Macros.h"
 #include "Object.h"
@@ -25,6 +24,9 @@ in the source distribution for its full text.
 #include "ProvideCurses.h"
 #include "XUtils.h"
 
+#ifdef MEMNODE_ON
+#include "MemoryNodeMeter.h"
+#endif
 
 Header* Header_new(ProcessList* pl, Settings* settings, HeaderLayout hLayout) {
    Header* this = xCalloc(1, sizeof(Header));
@@ -156,9 +158,13 @@ void Header_writeBackToSettings(const Header* this) {
          if (meter->param && As_Meter(meter) == &DynamicMeter_class) {
             const char* dynamic = DynamicMeter_lookup(this->pl->dynamicMeters, meter->param);
             xAsprintf(&name, "%s(%s)", As_Meter(meter)->name, dynamic);
+         #ifdef MEMNODE_ON
          } else if (meter->param && 
-               (As_Meter(meter) == &CPUMeter_class || 
+               (As_Meter(meter) == &CPUMeter_class ||
                 As_Meter(meter) == &MemoryNodeMeter_class)) {
+         #else
+         } else if (meter->param && As_Meter(meter) == &CPUMeter_class) {
+         #endif
             xAsprintf(&name, "%s(%u)", As_Meter(meter)->name, meter->param);
          } else {
             xAsprintf(&name, "%s", As_Meter(meter)->name);

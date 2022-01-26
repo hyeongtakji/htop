@@ -57,12 +57,14 @@ typedef struct CPUData_ {
    bool online;
 } CPUData;
 
+#ifdef MEMNODE_ON
 typedef struct MemNodeData_ {
     // Maybe we can support more
     memory_t totalMem;
     memory_t usedMem;
     memory_t sharedMem;
 } MemNodeData;
+#endif
 
 typedef struct TtyDriver_ {
    char* path;
@@ -90,7 +92,9 @@ typedef struct LinuxProcessList_ {
 
    memory_t availableMem;
 
+   #ifdef MEMNODE_ON
    MemNodeData* memNodeData;
+   #endif
 
    ZfsArcStats zfs;
    ZramStats zram;

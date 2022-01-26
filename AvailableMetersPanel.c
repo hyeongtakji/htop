@@ -13,7 +13,6 @@ in the source distribution for its full text.
 
 #include "CPUMeter.h"
 #include "MemoryMeter.h"
-#include "MemoryNodeMeter.h"
 #include "DynamicMeter.h"
 #include "FunctionBar.h"
 #include "Hashtable.h"
@@ -27,6 +26,9 @@ in the source distribution for its full text.
 #include "ProvideCurses.h"
 #include "XUtils.h"
 
+#ifdef MEMNODE_ON
+#include "MemoryNodeMeter.h"
+#endif
 
 static void AvailableMetersPanel_delete(Object* object) {
    Panel* super = (Panel*) object;
@@ -112,6 +114,7 @@ static void AvailableMetersPanel_addCPUMeters(Panel* super, const MeterClass* ty
 }
 
 // Handle (&MemoryMeter_class) entries in the AvailableMetersPanel
+#ifdef MEMNODE_ON
 static void AvailableMetersPanel_addMemoryMeters(Panel* super, const MeterClass* type, const ProcessList* pl) {
     Panel_add(super, (Object*) ListItem_new("Memory", 1 << 16));
     if (pl->memNodes > 1) {
@@ -122,6 +125,7 @@ static void AvailableMetersPanel_addMemoryMeters(Panel* super, const MeterClass*
         }
     }
 }
+#endif
 
 typedef struct {
    Panel* super;
@@ -172,7 +176,8 @@ AvailableMetersPanel* AvailableMetersPanel_new(Settings* settings, Header* heade
    // of multiple different Meters (also using 'param' to distinguish them).
    //
    // +Platform_meterTypes[1], [2] should be always (&MemoryMeter_class) and
-   // (&MemoryNodeMeter_class) we will handle separately
+   // (&MemoryNodeMeter_class) we will handle separately when MEMNODE_ON
+   #ifdef MEMNODE_ON
    for (unsigned int i = 3; Platform_meterTypes[i]; i++) {
       const MeterClass* type = Platform_meterTypes[i];
       assert(type != &CPUMeter_class);
@@ -182,8 +187,18 @@ AvailableMetersPanel* AvailableMetersPanel_new(Settings* settings, Header* heade
       else
          AvailableMetersPanel_addPlatformMeter(super, type, i);
    }
-   AvailableMetersPanel_addCPUMeters(super, &CPUMeter_class, pl);
    AvailableMetersPanel_addMemoryMeters(super, &MemoryMeter_class, pl);
+   #else
+   for (unsigned int i = 1; Platform_meterTypes[i]; i++) {
+      const MeterClass* type = Platform_meterTypes[i];
+      assert(type != &CPUMeter_class);
+      if (type == &DynamicMeter_class)
+         AvailableMetersPanel_addDynamicMeters(super, pl, i);
+      else
+         AvailableMetersPanel_addPlatformMeter(super, type, i);
+   }
+   #endif
+   AvailableMetersPanel_addCPUMeters(super, &CPUMeter_class, pl);
 
    return this;
 }

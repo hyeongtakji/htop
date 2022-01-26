@@ -230,7 +230,6 @@ if test "$my_htop_platform" = linux; then
    if test "$enable_static" != yes; then
       AC_SEARCH_LIBS([dlopen], [dl dld], [], [AC_MSG_ERROR([can not find required function dlopen()])])
    fi
-   AC_SEARCH_LIBS([numa_available], [numa], [], [AC_MSG_ERROR([can not find required function numa_available()])])
 fi
 
 if test "$my_htop_platform" = netbsd; then
@@ -632,6 +631,26 @@ if test "$enable_sensors" = yes || test "$my_htop_platform" = freebsd; then
    AC_DEFINE([BUILD_WITH_CPU_TEMP], [1], [Define if CPU temperature option should be enabled.])
 fi
 
+AC_ARG_ENABLE([memnode],
+              [AS_HELP_STRING([--enable-memnode],
+                              [enable memory node information support @<:@default=yes@:>@])],
+              [],
+              [enable_memnode=yes])
+case "$enable_memnode" in
+   no)
+      ;;
+   yes)
+      if test "$enable_memnode" = yes; then
+         AC_SEARCH_LIBS([numa_available], [numa], [], [AC_MSG_ERROR([can not find required function numa_available()])])
+      fi
+      ;;
+   *)
+      AC_MSG_ERROR([bad value '$enable_memnode' for --enable-memnode])
+      ;;
+esac
+if test "x$enable_memnode" = xyes; then
+   AC_DEFINE([MEMNODE_ON], [1], [Define if memory node support enabled.])
+fi
 # ----------------------------------------------------------------------
 
 
@@ -754,6 +773,7 @@ AC_MSG_RESULT([
   (Linux) ancient vserver:   $enable_ancient_vserver
   (Linux) delay accounting:  $enable_delayacct
   (Linux) sensors:           $enable_sensors
+  (Linux) memnode:           $enable_memnode
   (Linux) capabilities:      $enable_capabilities
   unicode:                   $enable_unicode
   affinity:                  $enable_affinity
