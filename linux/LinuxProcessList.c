@@ -255,8 +255,6 @@ static void LinuxProcessList_updateMemNodecount(ProcessList* super) {
    super->memNodes = numa_num_configured_nodes();
 
    this->memNodeData = xMallocArray(super->memNodes, sizeof(MemNodeData));
-   super->activeCPUs = 1;
-   super->existingCPUs = 1;
    return;
 }
 
@@ -1733,7 +1731,8 @@ static inline void LinuxProcessList_scanMemoryInfo(ProcessList* this) {
    this->cachedMem = cachedMem + sreclaimableMem - sharedMem;
    this->sharedMem = sharedMem;
    const memory_t usedDiff = freeMem + cachedMem + sreclaimableMem + buffersMem;
-   this->usedMem = (totalMem >= usedDiff) ? totalMem - usedDiff : totalMem - freeMem;
+   //this->usedMem = (totalMem >= usedDiff) ? totalMem - usedDiff : totalMem - freeMem;
+   this->usedMem = totalMem - freeMem;
    this->buffersMem = buffersMem;
    this->availableMem = availableMem != 0 ? MINIMUM(availableMem, totalMem) : freeMem;
    this->totalSwap = swapTotalMem;
