@@ -30,6 +30,11 @@ static void MemoryNodeMeter_init(Meter* this) {
    }
 }
 
+static void MemoryNodeMeter_getUiName(const Meter* this, char* buffer, 
+      size_t length) {
+      xSnprintf(buffer, length, "%s %u", Meter_uiName(this), this->param);
+}
+
 static void MemoryNodeMeter_updateValues(Meter* this) {
    char* buffer = this->txtBuffer;
    size_t size = sizeof(this->txtBuffer);
@@ -104,6 +109,7 @@ const MeterClass MemoryNodeMeter_class = {
       .display = MemoryNodeMeter_display,
    },
    .updateValues = MemoryNodeMeter_updateValues,
+   .getUiName = MemoryNodeMeter_getUiName,
    .defaultMode = BAR_METERMODE,
    .maxItems = 10,
    .total = 100.0,
